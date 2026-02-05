@@ -65,10 +65,12 @@ CORS(app, resources={
             "https://api.rasenai.qzz.io",  # Backend API domain
             "https://api.rasenai.qzz.io:8080",  # Backend API with port
             "https://free.wispbyte.com",  # Wispbyte staging
-            "https://mute-jayme-atoolworker-451e7ea2.koyeb.app",  # Koyeb deployment
+            "https://broken-gwennie-atoolworker-e3162aa0.koyeb.app",  # Koyeb deployment
+            "https://atool.pages.dev",  # Cloudflare Pages production
+            "https://48d33904.atool-8p5.pages.dev",  # Cloudflare Pages temporary deployment
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "X-Monetag-Signature"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Monetag-Signature", "ngrok-skip-browser-warning"],
         "supports_credentials": True,
         "expose_headers": ["Content-Type", "Authorization"]
     }
