@@ -2439,8 +2439,8 @@ if __name__ == "__main__":
     print(f"Bot Token: {masked_token}")
     print(f"CORS enabled for frontend access")
     
-    # Use port 5000 (original default)
-    port = 5000
+    # Use PORT from environment (Koyeb) or default to 5000
+    port = int(os.getenv("PORT", 5000))
     host = "0.0.0.0"
     
     # Display server info
@@ -2631,7 +2631,7 @@ _Sent from Atool Contact Form_"""
 
     # Flask starts IMMEDIATELY - no blocking operations before this!
     print("\n" + "="*60)
-    print("🚀 FLASK SERVER STARTING ON PORT 5000")
+    print(f"🚀 FLASK SERVER STARTING ON PORT {port}")
     print("="*60)
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False)
 

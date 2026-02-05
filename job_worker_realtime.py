@@ -1619,6 +1619,9 @@ def start_realtime():
         sys.exit(0)
 
 if __name__ == "__main__":
+    # Use PORT from environment (Koyeb) or default to 5000
+    port = int(os.getenv("PORT", 5000))
+    
     # Start job worker in background thread
     worker_thread = threading.Thread(target=start_realtime, daemon=True, name="JobWorker")
     worker_thread.start()
@@ -1626,10 +1629,10 @@ if __name__ == "__main__":
     
     # Start Flask HTTP server for health checks (foreground - Koyeb requirement)
     print("\n" + "="*60)
-    print("🚀 STARTING FLASK HEALTH CHECK SERVER ON PORT 5000")
+    print(f"🚀 STARTING FLASK HEALTH CHECK SERVER ON PORT {port}")
     print("="*60)
-    print("Health endpoint: http://0.0.0.0:5000/health")
+    print(f"Health endpoint: http://0.0.0.0:{port}/health")
     print("="*60 + "\n")
     
     # Flask runs in main thread - keeps process alive and responds to Koyeb health checks
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
