@@ -663,14 +663,16 @@ def generate_with_xeven(prompt, model, aspect_ratio, api_key=None, input_image_u
     https://ai-image-api.xeven.workers.dev/img
     
     Supports 5 models:
-    - sdxl-lightning: Fast, high-quality (< 5 secs), size 256-2048px
-    - sdxl: Balanced, professional (< 12 secs), size 256-2048px
-    - flux-schnell: Best realistic model (< 6 secs), size flexible
-    - lucid-origin: High-quality artistic, size 0-2500px, default 1120x1120
-    - phoenix: Professional-grade (25 steps), size 0-2048px, default 1024x1024
+    - sdxl-lightning: Fast, high-quality (< 5 secs), size 256-2048px, ALL ASPECT RATIOS
+    - sdxl: Balanced, professional (< 12 secs), size 256-2048px, ALL ASPECT RATIOS
+    - flux-schnell: Best realistic model (< 6 secs), SQUARE ONLY (1024x1024) ⚠️
+    - lucid-origin: High-quality artistic, size 0-2500px, ALL ASPECT RATIOS
+    - phoenix: Professional-grade (25 steps), size 0-2048px, SQUARE ONLY (1024x1024) ⚠️
     
     All models support negative prompts except flux-schnell.
     SDXL variants support img2img via image_b64 parameter.
+    
+    NOTE: flux-schnell IGNORES width/height parameters and always returns 1024x1024.
     """
     xeven_model = XEVEN_MODELS.get(model, 'sdxl-lightning')
     base_url = "https://ai-image-api.xeven.workers.dev/img"
@@ -717,6 +719,12 @@ def generate_with_xeven(prompt, model, aspect_ratio, api_key=None, input_image_u
         }
     
     dimensions = aspect_map.get(aspect_ratio, {"width": 1024, "height": 1024})
+    
+    # IMPORTANT: flux-schnell IGNORES width/height parameters and always returns 1024x1024
+    # Force 1:1 aspect ratio for flux-schnell
+    if xeven_model == 'flux-schnell':
+        print(f"[Xeven] WARNING: flux-schnell only supports 1024x1024, forcing square aspect ratio")
+        dimensions = {"width": 1024, "height": 1024}
     
     # Build request parameters based on model
     params = {
