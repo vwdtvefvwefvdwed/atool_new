@@ -244,7 +244,8 @@ def mark_job_failed(job_id, error_message):
         response = requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/fail",
             json=payload,
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         if response.status_code == 200:
@@ -279,7 +280,8 @@ def reset_job_to_pending(job_id, provider_key, error_message):
         response = requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/reset",
             json=payload,
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         if response.status_code == 200:
@@ -545,7 +547,8 @@ def process_video_job(job):
         requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/progress",
             json={"progress": 10, "message": "Starting video generation..."},
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         metadata = job.get("metadata", {})
@@ -615,7 +618,8 @@ def process_video_job(job):
         requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/progress",
             json={"progress": 50, "message": "Video generated, uploading..."},
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         import tempfile
@@ -688,7 +692,8 @@ def process_video_job(job):
         requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/complete",
             json={"image_url": final_url, "video_url": final_url, "success": True},
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         if api_key_id:
@@ -809,7 +814,8 @@ def process_image_job(job):
         requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/progress",
             json={"progress": 10, "message": "Starting generation..."},
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         model_name = job.get("model", "openflux1-v0.1.0-fp8.safetensors")
@@ -937,7 +943,8 @@ def process_image_job(job):
                     "file_name": f"job_{job_id}.png",
                     "metadata": upload_metadata
                 },
-                timeout=60
+                timeout=60,
+                verify=VERIFY_SSL
             )
             
             print(f"[Cloudinary] Response status: {upload_response.status_code}")
@@ -965,7 +972,8 @@ def process_image_job(job):
         complete_response = requests.post(
             f"{BACKEND_URL}/worker/job/{job_id}/complete",
             json={"image_url": final_url, "thumbnail_url": final_url},
-            timeout=10
+            timeout=10,
+            verify=VERIFY_SSL
         )
         
         if complete_response.status_code == 200:
@@ -1431,7 +1439,8 @@ def handle_api_key_insertion(payload):
                 requests.post(
                     f"{BACKEND_URL}/worker/job/{job_id}/progress",
                     json={"progress": 5, "message": f"API key now available, starting generation..."},
-                    timeout=10
+                    timeout=10,
+                    verify=VERIFY_SSL
                 )
                 
                 job_thread = threading.Thread(
