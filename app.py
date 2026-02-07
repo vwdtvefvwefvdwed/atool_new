@@ -1,6 +1,8 @@
 import os
 import time
 import threading
+import signal
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -42,6 +44,27 @@ sync_status = {
     "started_at": None
 }
 
+# Global flag for graceful shutdown
+shutdown_requested = False
+
+def graceful_shutdown(signum, frame):
+    """Handle graceful shutdown signal from graceful_shutdown.py script"""
+    global shutdown_requested
+    shutdown_requested = True
+    print("\n" + "="*60)
+    print("GRACEFUL SHUTDOWN SIGNAL RECEIVED")
+    print("="*60)
+    print(f"Signal: {signum}")
+    print("Flask app will shut down gracefully...")
+    print("Background threads will complete current operations...")
+    print("="*60)
+    # Exit gracefully
+    sys.exit(0)
+
+# Register signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, graceful_shutdown)
+signal.signal(signal.SIGINT, graceful_shutdown)
+
 # Start shared Realtime connection manager on app startup
 ensure_realtime_started()
 
@@ -54,20 +77,29 @@ ping_all_workers_async()
 
 # Configure CORS to allow requests from frontend
 # This fixes the "No 'Access-Control-Allow-Origin' header" error
+load_dotenv()
+
+# Get environment URLs for CORS
+BACKEND_URL = os.getenv("BACKEND_URL", "https://api.rasenai.qzz.io")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://rasenai.qzz.io")
+
+# Configure CORS to allow requests from frontend
+# This fixes the "No 'Access-Control-Allow-Origin' header" error
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "http://localhost:3000",  # React dev server (npm run dev)
-            "http://localhost:5173",  # Vite dev server (alternative port)
+            "http://localhost:3000",
+            "http://localhost:5173",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
-            "https://rasenai.qzz.io",  # Production frontend domain
-            "https://api.rasenai.qzz.io",  # Backend API domain
-            "https://api.rasenai.qzz.io:8080",  # Backend API with port
-            "https://free.wispbyte.com",  # Wispbyte staging
-            "https://broken-gwennie-atoolworker-e3162aa0.koyeb.app",  # Koyeb deployment
-            "https://atool.pages.dev",  # Cloudflare Pages production
-            "https://48d33904.atool-8p5.pages.dev",  # Cloudflare Pages temporary deployment
+            "https://rasenai.qzz.io",
+            "https://api.rasenai.qzz.io",
+            "https://api.rasenai.qzz.io:8080",
+            "https://free.wispbyte.com",
+            "https://atool.pages.dev",
+            FRONTEND_URL,
+            BACKEND_URL,
+            os.getenv("KOYEB_PUBLIC_URL"), # Auto-detect Koyeb URL if available
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "X-Monetag-Signature", "ngrok-skip-browser-warning"],
@@ -75,8 +107,6 @@ CORS(app, resources={
         "expose_headers": ["Content-Type", "Authorization"]
     }
 })
-
-load_dotenv()
 
 
 def _require_env(name: str) -> str:
@@ -2549,6 +2579,56 @@ if __name__ == "__main__":
             print(f"❌ Frontend error notification failed: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
 
+    # ============================================
+    # Admin Endpoints
+    # ============================================
+    
+    @app.route("/admin/shutdown", methods=["POST"])
+    def admin_shutdown():
+        """
+        Trigger graceful shutdown remotely (for Koyeb deployment)
+        Requires ADMIN_SECRET in Authorization header
+        """
+        try:
+            admin_secret = os.getenv("ADMIN_SECRET")
+            if not admin_secret:
+                return jsonify({"success": False, "error": "Admin endpoint not configured"}), 500
+            
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                return jsonify({"success": False, "error": "Unauthorized"}), 401
+            
+            provided_secret = auth_header.replace("Bearer ", "")
+            if provided_secret != admin_secret:
+                return jsonify({"success": False, "error": "Invalid admin secret"}), 403
+            
+            # Create maintenance mode flag
+            maintenance_flag = Path(__file__).parent / ".maintenance_mode"
+            maintenance_flag.touch()
+            print("="*60)
+            print("REMOTE SHUTDOWN TRIGGERED")
+            print("="*60)
+            print("Maintenance mode activated - no new jobs accepted")
+            print("="*60)
+            
+            # Schedule shutdown in background thread after response
+            def delayed_shutdown():
+                time.sleep(2)  # Give time for response to be sent
+                print("Initiating graceful shutdown...")
+                os.kill(os.getpid(), signal.SIGTERM)
+            
+            shutdown_thread = threading.Thread(target=delayed_shutdown, daemon=True)
+            shutdown_thread.start()
+            
+            return jsonify({
+                "success": True,
+                "message": "Graceful shutdown initiated. Maintenance mode activated."
+            }), 200
+            
+        except Exception as e:
+            print(f"❌ Admin shutdown error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+    
     # ============================================
     # Contact Form Endpoint
     # ============================================
