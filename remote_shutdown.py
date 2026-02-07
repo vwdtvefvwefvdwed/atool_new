@@ -1,15 +1,17 @@
 """
-Remote Graceful Shutdown Script for Koyeb Deployment
-Triggers shutdown via HTTP endpoint
+Remote Maintenance Mode Manager for Koyeb Deployment
+Enable/disable maintenance mode via HTTP endpoint
+Note: On Koyeb, the service will auto-restart if terminated. Use maintenance mode to block new jobs.
 """
 
 import os
+import sys
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def trigger_shutdown():
+def toggle_maintenance(enable=True):
     backend_url = os.getenv("BACKEND_URL", "https://fiscal-darice-atoolworker-26d3b1bc.koyeb.app")
     admin_secret = os.getenv("ADMIN_SECRET")
     
@@ -18,28 +20,41 @@ def trigger_shutdown():
         print("Set ADMIN_SECRET in your .env file")
         return False
     
-    shutdown_url = f"{backend_url}/admin/shutdown"
+    maintenance_url = f"{backend_url}/admin/maintenance"
     
     print("="*60)
-    print("REMOTE GRACEFUL SHUTDOWN")
+    print(f"REMOTE MAINTENANCE MODE - {'ENABLE' if enable else 'DISABLE'}")
     print("="*60)
     print(f"Target: {backend_url}")
     print("="*60)
     
-    confirm = input("\nTrigger graceful shutdown? (yes/no): ").strip().lower()
+    if enable:
+        print("\nThis will:")
+        print("  ✓ Block new job submissions")
+        print("  ✓ Keep service running (no restart)")
+        print("  ✓ Allow existing jobs to complete")
+        confirm_msg = "\nEnable maintenance mode? (yes/no): "
+    else:
+        print("\nThis will:")
+        print("  ✓ Re-enable job submissions")
+        print("  ✓ Resume normal operations")
+        confirm_msg = "\nDisable maintenance mode? (yes/no): "
+    
+    confirm = input(confirm_msg).strip().lower()
     if confirm != "yes":
-        print("Shutdown cancelled.")
+        print("Operation cancelled.")
         return False
     
-    print("\nSending shutdown request...")
+    print(f"\nSending request to {'enable' if enable else 'disable'} maintenance mode...")
     
     try:
         response = requests.post(
-            shutdown_url,
+            maintenance_url,
             headers={
                 "Authorization": f"Bearer {admin_secret}",
                 "Content-Type": "application/json"
             },
+            json={"enable": enable},
             timeout=10
         )
         
@@ -47,10 +62,7 @@ def trigger_shutdown():
             data = response.json()
             print("\n✅ SUCCESS")
             print(f"Message: {data.get('message')}")
-            print("\nBackend will:")
-            print("1. Activate maintenance mode (no new jobs)")
-            print("2. Wait for running jobs to complete")
-            print("3. Shut down gracefully")
+            print(f"Mode: {data.get('mode')}")
             return True
         else:
             print(f"\n❌ FAILED: {response.status_code}")
@@ -66,4 +78,17 @@ def trigger_shutdown():
         return False
 
 if __name__ == "__main__":
-    trigger_shutdown()
+    # Check command line arguments
+    if len(sys.argv) > 1:
+        action = sys.argv[1].lower()
+        if action in ["enable", "on", "1", "true"]:
+            toggle_maintenance(enable=True)
+        elif action in ["disable", "off", "0", "false"]:
+            toggle_maintenance(enable=False)
+        else:
+            print("Usage: python remote_shutdown.py [enable|disable]")
+            print("  enable  - Enable maintenance mode (block new jobs)")
+            print("  disable - Disable maintenance mode (allow new jobs)")
+    else:
+        # Default: enable maintenance mode
+        toggle_maintenance(enable=True)

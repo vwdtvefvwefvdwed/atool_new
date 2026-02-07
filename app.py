@@ -2588,11 +2588,12 @@ if __name__ == "__main__":
     # Admin Endpoints
     # ============================================
     
-    @app.route("/admin/shutdown", methods=["POST"])
-    def admin_shutdown():
+    @app.route("/admin/maintenance", methods=["POST"])
+    def admin_maintenance():
         """
-        Trigger graceful shutdown remotely (for Koyeb deployment)
+        Enable/disable maintenance mode remotely (for Koyeb deployment)
         Requires ADMIN_SECRET in Authorization header
+        Body: {"enable": true/false}
         """
         try:
             admin_secret = os.getenv("ADMIN_SECRET")
@@ -2607,31 +2608,39 @@ if __name__ == "__main__":
             if provided_secret != admin_secret:
                 return jsonify({"success": False, "error": "Invalid admin secret"}), 403
             
-            # Create maintenance mode flag
+            data = request.get_json() or {}
+            enable = data.get("enable", True)
+            
             maintenance_flag = Path(__file__).parent / ".maintenance_mode"
-            maintenance_flag.touch()
-            print("="*60)
-            print("REMOTE SHUTDOWN TRIGGERED")
-            print("="*60)
-            print("Maintenance mode activated - no new jobs accepted")
-            print("="*60)
             
-            # Schedule shutdown in background thread after response
-            def delayed_shutdown():
-                time.sleep(2)  # Give time for response to be sent
-                print("Initiating graceful shutdown...")
-                os.kill(os.getpid(), signal.SIGTERM)
-            
-            shutdown_thread = threading.Thread(target=delayed_shutdown, daemon=True)
-            shutdown_thread.start()
-            
-            return jsonify({
-                "success": True,
-                "message": "Graceful shutdown initiated. Maintenance mode activated."
-            }), 200
+            if enable:
+                maintenance_flag.touch()
+                print("="*60)
+                print("MAINTENANCE MODE ACTIVATED")
+                print("="*60)
+                print("Service will block new jobs but remain running")
+                print("="*60)
+                return jsonify({
+                    "success": True,
+                    "message": "Maintenance mode enabled. New jobs blocked.",
+                    "mode": "enabled"
+                }), 200
+            else:
+                if maintenance_flag.exists():
+                    maintenance_flag.unlink()
+                print("="*60)
+                print("MAINTENANCE MODE DISABLED")
+                print("="*60)
+                print("Service accepting new jobs")
+                print("="*60)
+                return jsonify({
+                    "success": True,
+                    "message": "Maintenance mode disabled. Accepting new jobs.",
+                    "mode": "disabled"
+                }), 200
             
         except Exception as e:
-            print(f"❌ Admin shutdown error: {e}")
+            print(f"❌ Admin maintenance error: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
     
     # ============================================
