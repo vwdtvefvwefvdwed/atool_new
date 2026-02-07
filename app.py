@@ -85,22 +85,27 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "https://rasenai.qzz.io")
 
 # Configure CORS to allow requests from frontend
 # This fixes the "No 'Access-Control-Allow-Origin' header" error
+# Filter out None values to prevent Flask-CORS errors
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://rasenai.qzz.io",
+    "https://api.rasenai.qzz.io",
+    "https://api.rasenai.qzz.io:8080",
+    "https://free.wispbyte.com",
+    "https://atool.pages.dev",
+    FRONTEND_URL,
+    BACKEND_URL,
+    os.getenv("KOYEB_PUBLIC_URL"), # Auto-detect Koyeb URL if available
+]
+# Remove None values
+allowed_origins = [origin for origin in allowed_origins if origin is not None]
+
 CORS(app, resources={
     r"/*": {
-        "origins": [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "https://rasenai.qzz.io",
-            "https://api.rasenai.qzz.io",
-            "https://api.rasenai.qzz.io:8080",
-            "https://free.wispbyte.com",
-            "https://atool.pages.dev",
-            FRONTEND_URL,
-            BACKEND_URL,
-            os.getenv("KOYEB_PUBLIC_URL"), # Auto-detect Koyeb URL if available
-        ],
+        "origins": allowed_origins,
         "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "X-Monetag-Signature", "ngrok-skip-browser-warning"],
         "supports_credentials": True,
